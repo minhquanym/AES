@@ -61,7 +61,7 @@ def popup():
     if(text==""):
         messagebox.showerror("ERROR","Enter 16 bit text only")
     else:
-        file = open('Encrypted/'+name+'.txt',"w+")
+        file = open('Encrypted/'+name+'.txt',"w+", encoding="utf-8")
         output=aesEncrypt(text,key)
         
         messagebox.showinfo("ENCRYPTED OUTPUT",output)
@@ -73,8 +73,8 @@ def popup():
 
 def popdown():
     name = e4.get()
-    file1 = open('Encrypted/'+name+'.txt',"r")
-    file2 = open('Decrypted/'+name+'decrypted.txt','w+')
+    file1 = open('Encrypted/'+name+'.txt',"r", encoding="utf-8")
+    file2 = open('Decrypted/'+name+'decrypted.txt','w+', encoding="utf-8")
     text= file1.read()
     key=e5.get() 
     e4.delete(0,END)
