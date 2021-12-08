@@ -95,21 +95,61 @@ def invMixCol(A):
 
 #method to add round key to text
 def addRoundKey(A,key):
-    B = np.zeros((4,4),dtype=int)
-    B = np.bitwise_xor(A,key)
-    return B
+  B = np.zeros((4,4),dtype=int)
+  B = np.bitwise_xor(A,key)
+  return B
 
 
 #method to restore text after adding round key
 def removeRoundKey(A,key):
-    B = np.zeros((4,4),dtype=int)
-    B = np.bitwise_xor(A,key)
-    return B
+  B = np.zeros((4,4),dtype=int)
+  B = np.bitwise_xor(A,key)
+  return B
+
+
+# Rotae word by 1 byte
+def rotateWord(word):
+  # rotate word to the left by one
+  word[0],word[1],word[2],word[3] = word[1],word[2],word[3],word[0]
+  return word
+
+
+# SubWord used in key expansion
+def subWord(word):
+  s_box = np.load('Lookup Tables/s_box.npy')
+  ans = np.zeros(4,dtype=int)
+  for i in range(4):
+    sub_row, sub_col = word[i]//16, word[i]%16
+    ans[i] = s_box[sub_row,sub_col]
+  return ans
+
+
+# Transform word used in expansion key
+def trans(word, rcon):
+  word = rotateWord(word)
+  word = subWord(word)
+  word = np.bitwise_xor(word, rcon)
+  return word
+
+
+# Expand master key to 11 round keys
+def expandKey(master_key):
+  rcon = np.load('Lookup Tables/rcon.npy')
+  round_keys = master_key
+  # Create all words in round key
+  for i in range(4, 44):
+    if i % 4 == 0:
+      round_keys = np.append(round_keys, [np.bitwise_xor(trans(round_keys[i-1], rcon[i//4]), round_keys[i-4])], axis=0)
+    else:
+      round_keys = np.append(round_keys, [np.bitwise_xor(round_keys[i-1], round_keys[i-4])], axis=0)
+
+  return round_keys
 
 
 # Main AES Encrtption Method
 def aesEncrypt(plain_text,key):
     key = text2Unicode(key)
+    round_keys = expandKey(key)
     length = len(plain_text)
     cipher_text = "" 
     
@@ -124,19 +164,24 @@ def aesEncrypt(plain_text,key):
             plain_text_split[-1]+=' '
     
     # encrypting each sub string
-    for sub_string in plain_text_split : 
-        A0 = text2Unicode(sub_string)
+    for sub_string in plain_text_split:
+      A0 = text2Unicode(sub_string)
+      A0 = addRoundKey(A0, round_keys[0:4,:])
+      # 10 round
+      for i in range(1, 11): 
         A1 = subBytes(A0)
         A2 = shiftRows(A1)
         A3 = mixCol(A2)
-        A4 = addRoundKey(A3,key)
-        cipher_text+=unicode2Text(A4)
+        A0 = addRoundKey(A3, round_keys[i*4:(i+1)*4,:])
+      cipher_text+=unicode2Text(A0)
+
     return cipher_text
 
 
 # Main AES Decryption Method
 def aesDecrypt(cipher_text,key):
     key = text2Unicode(key)
+    round_keys = expandKey(key)
     decrypted_text = ""
     length = len(cipher_text)
     # splitting  cipher text into substrings of length 16 each    
@@ -147,10 +192,12 @@ def aesDecrypt(cipher_text,key):
     # decrypting each substring
     for sub_string in cipher_text_split:
         cipher_text = text2Unicode(sub_string)
-        A3 = removeRoundKey(cipher_text,key)
-        A2 = invMixCol(A3)
-        A1 = invShiftRows(A2)
-        A0 = invSubBytes(A1)
+        A0 = removeRoundKey(cipher_text, round_keys[40:44,:])
+        for i in range(10, 0, -1):
+          A3 = invMixCol(A0)
+          A2 = invShiftRows(A3)
+          A1 = invSubBytes(A2)
+          A0 = removeRoundKey(A1, round_keys[(i-1)*4:i*4,:])
         decrypted_text+=unicode2Text(A0)
     return decrypted_text
 
@@ -158,9 +205,9 @@ if __name__== '__main__':
     # driver code :
     plain_text = input("Enter a string to be encoded : ")
     print("-----------------------------------------------------")
-    cipher_key = input("Enter a 16 character long key for encryption : ")    
+    cipher_key = input("Enter a 16 character long key for encryption : ")
     print("-----------------------------------------------------")
-    print("Encrypting : ")    
+    print("Encrypting : ")
     cipher_text = aesEncrypt(plain_text,cipher_key)
     print("The encrpyted text is : {}".format(cipher_text))
     print("-----------------------------------------------------")
