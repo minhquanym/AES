@@ -167,12 +167,15 @@ def aesEncrypt(plain_text,key):
     for sub_string in plain_text_split:
       A0 = text2Unicode(sub_string)
       A0 = addRoundKey(A0, round_keys[0:4,:])
-      # 10 round
-      for i in range(1, 11): 
+      # 9 round
+      for i in range(1, 10): 
         A1 = subBytes(A0)
         A2 = shiftRows(A1)
         A3 = mixCol(A2)
         A0 = addRoundKey(A3, round_keys[i*4:(i+1)*4,:])
+      A1 = subBytes(A0)
+      A2 = shiftRows(A1)
+      A0 = addRoundKey(A2, round_keys[40:44,:])
       cipher_text+=unicode2Text(A0)
 
     return cipher_text
@@ -193,11 +196,14 @@ def aesDecrypt(cipher_text,key):
     for sub_string in cipher_text_split:
         cipher_text = text2Unicode(sub_string)
         A0 = removeRoundKey(cipher_text, round_keys[40:44,:])
-        for i in range(10, 0, -1):
-          A3 = invMixCol(A0)
-          A2 = invShiftRows(A3)
-          A1 = invSubBytes(A2)
-          A0 = removeRoundKey(A1, round_keys[(i-1)*4:i*4,:])
+        for i in range(10, 1, -1):
+          A3 = invShiftRows(A0)
+          A2 = invSubBytes(A3)
+          A1 = removeRoundKey(A2, round_keys[(i-1)*4:i*4,:])
+          A0 = invMixCol(A1)
+        A3 = invShiftRows(A0)
+        A2 = invSubBytes(A3)
+        A0 = removeRoundKey(A2,  round_keys[0:4,:])
         decrypted_text+=unicode2Text(A0)
     return decrypted_text
 
